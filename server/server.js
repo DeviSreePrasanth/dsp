@@ -84,20 +84,33 @@ app.post("/login", async (req, res) => {
 // Audio Upload and Transcription Endpoint (Using Groq - FREE!)
 app.post("/transcribe-audio", upload.single("audio"), async (req, res) => {
   try {
+    console.log("Transcribe endpoint hit");
+    console.log("Request headers:", req.headers);
+    console.log("File present:", !!req.file);
+
     if (!req.file) {
+      console.error("No file in request");
       return res.status(400).json({ error: "No audio file uploaded" });
     }
 
     console.log("Transcribing audio file:", req.file.originalname);
+    console.log("File path:", req.file.path);
+    console.log("File size:", req.file.size);
 
     // Read the file and create a File-like object for Groq
     const fileBuffer = fs.readFileSync(req.file.path);
-    const fileBlob = new Blob([fileBuffer], { type: req.file.mimetype });
+    console.log("File read successfully, buffer size:", fileBuffer.length);
+
+    const fileBlob = new Blob([fileBuffer], {
+      type: req.file.mimetype || "audio/mpeg",
+    });
 
     // Create a File object
     const file = new File([fileBlob], req.file.originalname, {
-      type: req.file.mimetype,
+      type: req.file.mimetype || "audio/mpeg",
     });
+
+    console.log("Sending to Groq for transcription...");
 
     // Transcribe audio using Groq Whisper (Free!)
     const transcription = await groq.audio.transcriptions.create({
@@ -109,9 +122,14 @@ app.post("/transcribe-audio", upload.single("audio"), async (req, res) => {
     });
 
     // Clean up uploaded file
-    fs.unlinkSync(req.file.path);
+    try {
+      fs.unlinkSync(req.file.path);
+      console.log("Temp file cleaned up");
+    } catch (cleanupError) {
+      console.warn("Failed to cleanup temp file:", cleanupError.message);
+    }
 
-    console.log("Transcription completed");
+    console.log("Transcription completed successfully");
 
     res.json({
       success: true,
@@ -120,13 +138,23 @@ app.post("/transcribe-audio", upload.single("audio"), async (req, res) => {
   } catch (error) {
     console.error("Error transcribing audio:", error.message);
     console.error("Full error:", error);
+    console.error("Error stack:", error.stack);
+
     // Clean up file if it exists
     if (req.file && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (cleanupError) {
+        console.warn(
+          "Failed to cleanup file after error:",
+          cleanupError.message
+        );
+      }
     }
     res.status(500).json({
       error: "Failed to transcribe audio",
       details: error.message,
+      stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
     });
   }
 });
@@ -275,6 +303,20 @@ IMPORTANT: Output ONLY JSON with no markdown, no backticks.`;
       details: error.message || "Unknown error occurred",
     });
   }
+});
+
+// Health check endpoint
+app.get("/", (req, res) => {
+  res.json({
+    status: "ok",
+    message: "AI Interview Analysis API is running",
+    endpoints: ["/transcribe-audio", "/extract-qa", "/evaluate-interview"],
+    timestamp: new Date().toISOString(),
+  });
+});
+
+app.get("/health", (req, res) => {
+  res.json({ status: "healthy", timestamp: new Date().toISOString() });
 });
 
 const PORT = process.env.PORT || 5000;
