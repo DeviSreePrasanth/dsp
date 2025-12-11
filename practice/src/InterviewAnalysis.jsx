@@ -90,7 +90,7 @@ const InterviewAnalysis = () => {
       formData.append("audio", audioFile);
 
       const response = await axios.post(
-        "http://localhost:5000/transcribe-audio",
+        "https://dsp-lovat.vercel.app/transcribe-audio",
         formData,
         {
           headers: {
@@ -117,7 +117,7 @@ const InterviewAnalysis = () => {
     setError("");
 
     try {
-      const response = await axios.post("http://localhost:5000/extract-qa", {
+      const response = await axios.post("https://dsp-lovat.vercel.app/extract-qa", {
         transcription: transcriptionText || transcription,
       });
 
@@ -151,7 +151,7 @@ const InterviewAnalysis = () => {
 
       setLoading(true);
       const response = await axios.post(
-        "http://localhost:5000/evaluate-interview",
+        "https://dsp-lovat.vercel.app/evaluate-interview",
         {
           qaItems,
         }
