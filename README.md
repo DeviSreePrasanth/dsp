@@ -14,6 +14,7 @@ An intelligent interview analysis platform powered by AI that transcribes audio 
 ## Tech Stack
 
 ### Frontend
+
 - React 19
 - Vite
 - Tailwind CSS v4
@@ -22,6 +23,7 @@ An intelligent interview analysis platform powered by AI that transcribes audio 
 - jsPDF
 
 ### Backend
+
 - Node.js & Express 5
 - MongoDB with Mongoose
 - Groq SDK (Whisper & Llama 3.3)
@@ -31,6 +33,7 @@ An intelligent interview analysis platform powered by AI that transcribes audio 
 ## Getting Started
 
 ### Prerequisites
+
 - Node.js (v18 or higher)
 - MongoDB Atlas account or local MongoDB
 - Groq API key (free tier available)
@@ -38,18 +41,21 @@ An intelligent interview analysis platform powered by AI that transcribes audio 
 ### Installation
 
 1. **Clone the repository**
+
 ```bash
 git clone https://github.com/DeviSreePrasanth/dsp.git
 cd dsp
 ```
 
 2. **Install frontend dependencies**
+
 ```bash
 cd practice
 npm install
 ```
 
 3. **Install backend dependencies**
+
 ```bash
 cd ../server
 npm install
@@ -58,6 +64,7 @@ npm install
 4. **Configure environment variables**
 
 Create a `.env` file in the `server` folder:
+
 ```env
 GROQ_API_KEY=your_groq_api_key_here
 MONGODB_URI=your_mongodb_connection_string
@@ -67,19 +74,21 @@ PORT=5000
 ### Running the Application
 
 1. **Start the backend server**
+
 ```bash
 cd server
 npm start
 ```
 
 2. **Start the frontend development server**
+
 ```bash
 cd practice
 npm run dev
 ```
 
 3. **Open your browser**
-Navigate to `http://localhost:5173`
+   Navigate to `http://localhost:5173`
 
 ## Usage
 
@@ -95,6 +104,7 @@ Navigate to `http://localhost:5173`
 ## Evaluation Criteria
 
 ### Technical Depth (60%)
+
 - Knowledge demonstration
 - Completeness of answers
 - Technical accuracy
@@ -102,12 +112,14 @@ Navigate to `http://localhost:5173`
 - Advanced understanding
 
 ### Communication (25%)
+
 - Grammar and sentence structure
 - Clarity and fluency
 - Coherent structure
 - Proper English formation
 
 ### Confidence (15%)
+
 - Delivery quality
 - Assurance in responses
 - Steady pace and tone
@@ -136,12 +148,15 @@ Practice/
 ## API Endpoints
 
 ### POST `/transcribe-audio`
+
 Transcribes uploaded audio file using Groq Whisper
 
 ### POST `/extract-qa`
+
 Extracts question-answer pairs from transcription
 
 ### POST `/evaluate-interview`
+
 Evaluates Q&A pairs and returns scores with feedback
 
 ## Contributing
@@ -161,6 +176,7 @@ This project is licensed under the MIT License.
 ## Author
 
 **Devi Sree Prasanth**
+
 - GitHub: [@DeviSreePrasanth](https://github.com/DeviSreePrasanth)
 
 ---
