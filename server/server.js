@@ -17,6 +17,7 @@ app.use(
       "http://localhost:5173",
       "https://dsp-lovat.vercel.app",
       "https://dsp-devisreeprasanth.vercel.app",
+      "https://dev-psi-tan.vercel.app",
     ],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
