@@ -54,10 +54,13 @@ if (!process.env.VERCEL) {
   }
 }
 
-mongoose
-  .connect(process.env.MONGODB_URI)
-  .then(() => console.log("MongoDb Connected"))
-  .catch((err) => console.error("MongoDB connection error:", err));
+// MongoDB connection (optional - not used in main functionality)
+if (process.env.MONGODB_URI) {
+  mongoose
+    .connect(process.env.MONGODB_URI)
+    .then(() => console.log("MongoDb Connected"))
+    .catch((err) => console.log("MongoDB connection optional:", err.message));
+}
 const UserSchema = new mongoose.Schema({
   username: { type: String, unique: true },
   password: String,
@@ -321,4 +324,10 @@ app.get("/health", (req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server Started on port ${PORT}`));
+
+// For Vercel serverless deployment
+if (process.env.VERCEL) {
+  module.exports = app;
+} else {
+  app.listen(PORT, () => console.log(`Server Started on port ${PORT}`));
+}
