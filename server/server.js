@@ -9,17 +9,29 @@ require("dotenv").config();
 const Groq = require("groq-sdk");
 
 const app = express();
-app.use(express.json());
-app.use(cors());
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "50mb", extended: true }));
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",
+      "https://dsp-lovat.vercel.app",
+      "https://dsp-devisreeprasanth.vercel.app",
+    ],
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 
 // Configure Groq (Free alternative to OpenAI)
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
 });
 
-// Configure multer for file uploads
+// Configure multer for file uploads (use /tmp for Vercel)
 const upload = multer({
-  dest: "uploads/",
+  dest: process.env.VERCEL ? "/tmp/" : "uploads/",
   limits: { fileSize: 25 * 1024 * 1024 }, // 25MB limit
   fileFilter: (req, file, cb) => {
     const allowedTypes = /mp3|wav|m4a|webm|mp4|mpeg|mpga|ogg|flac/;
@@ -34,9 +46,11 @@ const upload = multer({
   },
 });
 
-// Create uploads directory if it doesn't exist
-if (!fs.existsSync("uploads")) {
-  fs.mkdirSync("uploads");
+// Create uploads directory if it doesn't exist (skip on Vercel)
+if (!process.env.VERCEL) {
+  if (!fs.existsSync("uploads")) {
+    fs.mkdirSync("uploads");
+  }
 }
 
 mongoose
