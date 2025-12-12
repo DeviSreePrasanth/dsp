@@ -1,7 +1,4 @@
 const express = require("express");
-const mongoose = require("mongoose");
-const cors = require("cors");
-const axios = require("axios");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
@@ -10,39 +7,32 @@ const Groq = require("groq-sdk");
 
 const app = express();
 
-// CORS configuration - MUST be before other middleware
+// CORS configuration
 const allowedOrigins = [
   "http://localhost:5173",
   "https://interview-ten-pink.vercel.app",
 ];
 
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      // Allow requests with no origin (like mobile apps or curl requests)
-      if (!origin) return callback(null, true);
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (!origin || allowedOrigins.includes(origin)) {
+    res.header("Access-Control-Allow-Origin", origin || "*");
+    res.header("Access-Control-Allow-Credentials", "true");
+    res.header(
+      "Access-Control-Allow-Methods",
+      "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS"
+    );
+    res.header(
+      "Access-Control-Allow-Headers",
+      "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+    );
+  }
 
-      if (allowedOrigins.indexOf(origin) === -1) {
-        const msg =
-          "The CORS policy for this site does not allow access from the specified Origin.";
-        return callback(new Error(msg), false);
-      }
-      return callback(null, true);
-    },
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: [
-      "Content-Type",
-      "Authorization",
-      "X-Requested-With",
-      "Accept",
-      "Origin",
-    ],
-    exposedHeaders: ["Content-Length", "Content-Type"],
-    preflightContinue: false,
-    optionsSuccessStatus: 204,
-  })
-);
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200);
+  }
+  next();
+});
 
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
@@ -76,61 +66,23 @@ if (!process.env.VERCEL) {
   }
 }
 
-// MongoDB connection (optional - not used in main functionality)
-if (process.env.MONGODB_URI) {
-  mongoose
-    .connect(process.env.MONGODB_URI)
-    .then(() => console.log("MongoDb Connected"))
-    .catch((err) => console.log("MongoDB connection optional:", err.message));
-}
-const UserSchema = new mongoose.Schema({
-  username: { type: String, unique: true },
-  password: String,
-});
-
-const User = mongoose.model("User", UserSchema);
-
-app.post("/register", async (req, res) => {
-  const { username, password } = req.body;
-  const existing = await User.findOne({ username });
-  if (existing) return res.json({ message: "User already exisits" });
-
-  await User.create({ username, password });
-  res.json({ message: "User Created succesfully" });
-});
-
-app.post("/login", async (req, res) => {
-  const { username, password } = req.body;
-  const user = await User.findOne({ username, password });
-  if (!user) return res.json({ message: "Invalid Credentials" });
-
-  res.json({ message: "Login Successful" });
-});
-
 // Audio Upload and Transcription Endpoint (Using Groq - FREE!)
 app.post("/transcribe-audio", upload.single("audio"), async (req, res) => {
   try {
-    console.log("Transcribe endpoint hit");
-    console.log("Request headers:", req.headers);
-    console.log("File present:", !!req.file);
-
     if (!req.file) {
-      console.error("No file in request");
       return res.status(400).json({ error: "No audio file uploaded" });
     }
 
-    console.log("Transcribing audio file:", req.file.originalname);
-    console.log("File path:", req.file.path);
-    console.log("File size:", req.file.size);
-
-    console.log("Sending to Groq for transcription...");
+    console.log(
+      `Transcribing: ${req.file.originalname} (${req.file.size} bytes)`
+    );
 
     // Rename the temp file to include the original extension for Groq
     const fileExtension = path.extname(req.file.originalname);
     const tempFilePath = req.file.path + fileExtension;
     fs.renameSync(req.file.path, tempFilePath);
 
-    // Transcribe audio using Groq Whisper (Free!)
+    // Transcribe audio using Groq Whisper
     const transcription = await groq.audio.transcriptions.create({
       file: fs.createReadStream(tempFilePath),
       model: "whisper-large-v3-turbo",
@@ -139,22 +91,8 @@ app.post("/transcribe-audio", upload.single("audio"), async (req, res) => {
       temperature: 0.0,
     });
 
-    // Clean up uploaded file
-    try {
-      fs.unlinkSync(tempFilePath);
-      console.log("Temp file cleaned up");
-    } catch (cleanupError) {
-      console.warn("Failed to cleanup temp file:", cleanupError.message);
-    }
-
-    // Clean up uploaded file
-    try {
-      fs.unlinkSync(req.file.path);
-      console.log("Temp file cleaned up");
-    } catch (cleanupError) {
-      console.warn("Failed to cleanup temp file:", cleanupError.message);
-    }
-
+    // Clean up temp file
+    fs.unlinkSync(tempFilePath);
     console.log("Transcription completed successfully");
 
     res.json({
@@ -163,10 +101,8 @@ app.post("/transcribe-audio", upload.single("audio"), async (req, res) => {
     });
   } catch (error) {
     console.error("Error transcribing audio:", error.message);
-    console.error("Full error:", error);
-    console.error("Error stack:", error.stack);
 
-    // Clean up file if it exists (check both original path and renamed path)
+    // Clean up files if they exist
     if (req.file) {
       const fileExtension = path.extname(req.file.originalname);
       const tempFilePath = req.file.path + fileExtension;
@@ -176,20 +112,20 @@ app.post("/transcribe-audio", upload.single("audio"), async (req, res) => {
           try {
             fs.unlinkSync(filePath);
           } catch (cleanupError) {
-            console.warn("Failed to cleanup file:", cleanupError.message);
+            console.warn("Cleanup failed:", cleanupError.message);
           }
         }
       });
     }
+
     res.status(500).json({
       error: "Failed to transcribe audio",
       details: error.message,
-      stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
     });
   }
 });
 
-// Extract Q/A from Transcription Endpoint (Using Groq - FREE!)
+// Extract Q/A from Transcription Endpoint
 app.post("/extract-qa", async (req, res) => {
   try {
     const { transcription } = req.body;
@@ -198,10 +134,8 @@ app.post("/extract-qa", async (req, res) => {
       return res.status(400).json({ error: "No transcription provided" });
     }
 
-    console.log("Extracting Q/A from transcription...");
-    console.log("Transcription length:", transcription.length);
+    console.log(`Extracting Q/A (${transcription.length} chars)...`);
 
-    // Use Groq to extract Q/A pairs (Free!)
     const completion = await groq.chat.completions.create({
       model: "llama-3.3-70b-versatile",
       messages: [
@@ -226,15 +160,11 @@ Rules:
       temperature: 0.3,
     });
 
-    console.log("Raw Groq response:", completion.choices[0].message.content);
-
     let qaData = JSON.parse(completion.choices[0].message.content);
-    console.log("Parsed QA data:", JSON.stringify(qaData, null, 2));
 
     // Handle different response formats
     let qaItems = qaData.qa_pairs || qaData.questions || qaData.items || qaData;
 
-    // If it's not an array, try to extract array from object
     if (!Array.isArray(qaItems)) {
       qaItems = Object.values(qaData).find((val) => Array.isArray(val)) || [];
     }
@@ -244,8 +174,6 @@ Rules:
     if (qaItems.length === 0) {
       return res.status(400).json({
         error: "No Q/A pairs found in transcription",
-        details:
-          "The AI could not identify any question-answer pairs in the transcript",
       });
     }
 
@@ -256,7 +184,6 @@ Rules:
     });
   } catch (error) {
     console.error("Error extracting Q/A:", error.message);
-    console.error("Full error:", error);
     res.status(500).json({
       error: "Failed to extract Q/A",
       details: error.message,
@@ -264,7 +191,7 @@ Rules:
   }
 });
 
-// AI Interview Analysis Endpoint (Using Groq - FAST & FREE!)
+// AI Interview Analysis Endpoint
 app.post("/evaluate-interview", async (req, res) => {
   try {
     const { qaItems } = req.body;
@@ -275,7 +202,7 @@ app.post("/evaluate-interview", async (req, res) => {
         .json({ error: "Invalid input. Provide qaItems array." });
     }
 
-    console.log(`Evaluating ${qaItems.length} Q/A pairs with Groq...`);
+    console.log(`Evaluating ${qaItems.length} Q/A pairs...`);
 
     const systemPrompt = `You are an expert technical interviewer. Evaluate candidate answers for each Q&A pair.
 
@@ -299,7 +226,6 @@ Output Format:
 
 IMPORTANT: Output ONLY JSON with no markdown, no backticks.`;
 
-    // Use Groq for fast evaluation (Free & much faster than Ollama!)
     const completion = await groq.chat.completions.create({
       model: "llama-3.3-70b-versatile",
       messages: [
@@ -320,17 +246,15 @@ IMPORTANT: Output ONLY JSON with no markdown, no backticks.`;
       temperature: 0.3,
     });
 
-    console.log("Received response from Groq");
     let evaluationResult = JSON.parse(completion.choices[0].message.content);
-    console.log("Successfully parsed evaluation response");
+    console.log("Evaluation completed successfully");
 
     res.json(evaluationResult);
   } catch (error) {
     console.error("Error evaluating interview:", error.message);
-    console.error("Full error stack:", error.stack);
     res.status(500).json({
       error: "Failed to evaluate interview",
-      details: error.message || "Unknown error occurred",
+      details: error.message,
     });
   }
 });
