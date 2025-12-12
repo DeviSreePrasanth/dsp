@@ -123,29 +123,29 @@ app.post("/transcribe-audio", upload.single("audio"), async (req, res) => {
     console.log("File path:", req.file.path);
     console.log("File size:", req.file.size);
 
-    // Read the file and create a File-like object for Groq
-    const fileBuffer = fs.readFileSync(req.file.path);
-    console.log("File read successfully, buffer size:", fileBuffer.length);
-
-    const fileBlob = new Blob([fileBuffer], {
-      type: req.file.mimetype || "audio/mpeg",
-    });
-
-    // Create a File object
-    const file = new File([fileBlob], req.file.originalname, {
-      type: req.file.mimetype || "audio/mpeg",
-    });
-
     console.log("Sending to Groq for transcription...");
+
+    // Rename the temp file to include the original extension for Groq
+    const fileExtension = path.extname(req.file.originalname);
+    const tempFilePath = req.file.path + fileExtension;
+    fs.renameSync(req.file.path, tempFilePath);
 
     // Transcribe audio using Groq Whisper (Free!)
     const transcription = await groq.audio.transcriptions.create({
-      file: file,
+      file: fs.createReadStream(tempFilePath),
       model: "whisper-large-v3-turbo",
       response_format: "text",
       language: "en",
       temperature: 0.0,
     });
+
+    // Clean up uploaded file
+    try {
+      fs.unlinkSync(tempFilePath);
+      console.log("Temp file cleaned up");
+    } catch (cleanupError) {
+      console.warn("Failed to cleanup temp file:", cleanupError.message);
+    }
 
     // Clean up uploaded file
     try {
@@ -166,16 +166,20 @@ app.post("/transcribe-audio", upload.single("audio"), async (req, res) => {
     console.error("Full error:", error);
     console.error("Error stack:", error.stack);
 
-    // Clean up file if it exists
-    if (req.file && fs.existsSync(req.file.path)) {
-      try {
-        fs.unlinkSync(req.file.path);
-      } catch (cleanupError) {
-        console.warn(
-          "Failed to cleanup file after error:",
-          cleanupError.message
-        );
-      }
+    // Clean up file if it exists (check both original path and renamed path)
+    if (req.file) {
+      const fileExtension = path.extname(req.file.originalname);
+      const tempFilePath = req.file.path + fileExtension;
+
+      [req.file.path, tempFilePath].forEach((filePath) => {
+        if (fs.existsSync(filePath)) {
+          try {
+            fs.unlinkSync(filePath);
+          } catch (cleanupError) {
+            console.warn("Failed to cleanup file:", cleanupError.message);
+          }
+        }
+      });
     }
     res.status(500).json({
       error: "Failed to transcribe audio",
