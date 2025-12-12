@@ -13,6 +13,7 @@ const app = express();
 // CORS configuration - MUST be before other middleware
 const allowedOrigins = [
   "http://localhost:5173",
+  "https://interview-ten-pink.vercel.app",
 ];
 
 app.use(
