@@ -16,9 +16,7 @@ app.use(
     origin: function (origin, callback) {
       const allowedOrigins = [
         "http://localhost:5173",
-        "https://dsp-lovat.vercel.app",
-        "https://dsp-devisreeprasanth.vercel.app",
-        "https://dev-psi-tan.vercel.app",
+        "https://dev-psi-tan.vercel.app/"
       ];
       // Allow requests with no origin (like mobile apps or curl)
       if (!origin || allowedOrigins.indexOf(origin) !== -1) {
