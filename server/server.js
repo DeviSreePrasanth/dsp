@@ -11,30 +11,40 @@ const Groq = require("groq-sdk");
 const app = express();
 
 // CORS configuration - MUST be before other middleware
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://dev-psi-tan.vercel.app",
+];
+
 app.use(
   cors({
     origin: function (origin, callback) {
-      const allowedOrigins = [
-        "http://localhost:5173",
-        "https://dev-psi-tan.vercel.app",
-      ];
-      // Allow requests with no origin (like mobile apps or curl)
-      if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.indexOf(origin) === -1) {
+        const msg =
+          "The CORS policy for this site does not allow access from the specified Origin.";
+        return callback(new Error(msg), false);
       }
+      return callback(null, true);
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-Requested-With",
+      "Accept",
+      "Origin",
+    ],
     exposedHeaders: ["Content-Length", "Content-Type"],
     preflightContinue: false,
     optionsSuccessStatus: 204,
   })
 );
 
-// Handle preflight requests
+// Handle preflight requests explicitly
 app.options("*", cors());
 
 app.use(express.json({ limit: "50mb" }));
