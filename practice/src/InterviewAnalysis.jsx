@@ -117,9 +117,12 @@ const InterviewAnalysis = () => {
     setError("");
 
     try {
-      const response = await axios.post("https://backend-rho-hazel.vercel.app/extract-qa", {
-        transcription: transcriptionText || transcription,
-      });
+      const response = await axios.post(
+        "https://backend-rho-hazel.vercel.app/extract-qa",
+        {
+          transcription: transcriptionText || transcription,
+        }
+      );
 
       if (response.data.qaItems && response.data.qaItems.length > 0) {
         setJsonInput(JSON.stringify(response.data.qaItems, null, 2));
