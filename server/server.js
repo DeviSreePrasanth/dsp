@@ -82,9 +82,17 @@ app.post("/transcribe-audio", upload.single("audio"), async (req, res) => {
     const tempFilePath = req.file.path + fileExtension;
     fs.renameSync(req.file.path, tempFilePath);
 
+    // Read file as buffer and create a File object (works better than streams)
+    const fileBuffer = fs.readFileSync(tempFilePath);
+    const file = new File([fileBuffer], req.file.originalname, {
+      type: req.file.mimetype || "audio/mpeg",
+    });
+
+    console.log("Sending to Groq API...");
+
     // Transcribe audio using Groq Whisper
     const transcription = await groq.audio.transcriptions.create({
-      file: fs.createReadStream(tempFilePath),
+      file: file,
       model: "whisper-large-v3-turbo",
       response_format: "text",
       language: "en",
@@ -100,7 +108,21 @@ app.post("/transcribe-audio", upload.single("audio"), async (req, res) => {
       transcription: transcription,
     });
   } catch (error) {
-    console.error("Error transcribing audio:", error.message);
+    console.error("=== TRANSCRIPTION ERROR ===");
+    console.error("Error message:", error.message);
+    console.error("Error type:", error.constructor.name);
+    console.error("Error code:", error.code);
+    if (error.response) {
+      console.error("API Status:", error.response.status);
+      console.error(
+        "API Response:",
+        JSON.stringify(error.response.data, null, 2)
+      );
+    }
+    if (error.cause) {
+      console.error("Error cause:", error.cause);
+    }
+    console.error("Full error:", error);
 
     // Clean up files if they exist
     if (req.file) {
