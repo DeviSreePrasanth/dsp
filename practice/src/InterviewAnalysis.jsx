@@ -90,7 +90,7 @@ const InterviewAnalysis = () => {
       formData.append("audio", audioFile);
 
       const response = await axios.post(
-        "http://localhost:5000/transcribe-audio",
+        "https://backend-rho-hazel.vercel.app/transcribe-audio",
         formData,
         {
           headers: {
@@ -117,9 +117,12 @@ const InterviewAnalysis = () => {
     setError("");
 
     try {
-      const response = await axios.post("http://localhost:5000/extract-qa", {
-        transcription: transcriptionText || transcription,
-      });
+      const response = await axios.post(
+        "https://backend-rho-hazel.vercel.app/extract-qa",
+        {
+          transcription: transcriptionText || transcription,
+        }
+      );
 
       if (response.data.qaItems && response.data.qaItems.length > 0) {
         setJsonInput(JSON.stringify(response.data.qaItems, null, 2));
@@ -151,7 +154,7 @@ const InterviewAnalysis = () => {
 
       setLoading(true);
       const response = await axios.post(
-        "http://localhost:5000/evaluate-interview",
+        "https://backend-rho-hazel.vercel.app/evaluate-interview",
         {
           qaItems,
         }
